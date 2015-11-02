@@ -28,6 +28,7 @@ package com.lecv.camera;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -37,6 +38,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.Buffer;
 import java.util.*;
@@ -197,28 +199,40 @@ public class MainActivity extends AppCompatActivity {
     public void ReadUsbData()
     {
         String text = String.format("%x %x %x %x",
-                usbdata[0], usbdata[1], usbdata[2], usbdata[3]);
+                bitmap[0], bitmap[1], bitmap[2], bitmap[3]);
         textView.setText(text);
-        Bitmap bm = BitmapFactory.decodeByteArray(bitmap, 0, readcount);
-
-
-
-        /*
+        //Bitmap bm = BitmapFactory.decodeByteArray(bitmap, 0, readcount);
 
         Bitmap bm = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
 
-        // Setting RGB888 bytes buffer into ARGB8888 bitmap
-        for(int i=0; i<640; i++)
+        int[] colors = new int[640*480];
+        int r,g,b;
+        for(int ci = 0; ci<colors.length; ci++)
         {
-            for(int j=0; j<480; j++)
+            r = 0xff & bitmap[ci*3];
+            g = 0xff & bitmap[ci*3 + 1];
+            b = 0xff & bitmap[ci*3 + 2];
+
+            colors[ci] = Color.rgb(r,g,b);
+        }
+
+        bm.setPixels(colors, 0, 640, 0, 0, 640, 480);
+
+/*
+        // Setting RGB888 bytes buffer into ARGB8888 bitmap
+        for(int y=0; y<480; y++)
+        {
+            for(int x=0; x<640; x++)
             {
-                bm.setPixel(i, j , 0xff << 24 | bitmap[j*640*3+i*3] << 16 |
-                        bitmap[j*640*3+i*3 +1 ] | bitmap[j*640*3+i*3 +2]);
+                int idx = y*640 + x;
+                r = bitmap[idx*3];
+                g = bitmap[idx*3 + 1];
+                b = bitmap[idx*3 + 2];
+
+                bm.setPixel(x, y , Color.rgb(r,g,b) );
             }
         }
-        */
-
-
+*/
         imageView.setImageBitmap(bm);
     }
 
@@ -287,9 +301,9 @@ public class MainActivity extends AppCompatActivity {
 
                             /* libusb will try to do bulk transfer using 16K buffer */
 
-                            count = instream.read(bitmap, readcount, 493862 - readcount);
+                            count = instream.read(bitmap, readcount, 640*480*3 - readcount);
 
-                            if (count == -1 || readcount == 493862)
+                            if (count == -1 || readcount == 640*480*3)
                                 break;
 
                             readcount += count;
@@ -309,28 +323,50 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    static final int SYNC = 0xfe01fe01;
+    static final int VER = 0x4;
+
+    void WriteReqHeader(DataOutputStream out, byte id, byte format, int length){
+
+
+        try {
+            out.writeInt(SYNC);
+            out.writeByte(VER);
+            out.writeByte(id);
+            out.writeByte(format);
+            out.write(new byte[5]);
+            out.writeInt(length);
+            out.flush();
+        }catch (IOException ex){
+
+        }
+    }
+
     public void WriteUsbData(byte iButton){
+
+        /*
         writeusbdata[0] = 0;
         writeusbdata[1] = 1;
         writeusbdata[2] = 2;
         writeusbdata[3] = iButton;
 
-        Log.d("LECV", "pressed " + iButton);
+        Log.d("LECV", "pressed " + iButton); */
 
         DataOutputStream out = new DataOutputStream(mOutputStream);
         try {
             out.writeInt(0xdeadbeef);
+            out.flush();
         }catch (IOException e){
 
         }
 
-
+/*
         try{
             if(mOutputStream != null){
                 mOutputStream.write(writeusbdata,0,4);
             }
         }
-        catch (IOException e) {}
+        catch (IOException e) {} */
     }
 
     private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver()
